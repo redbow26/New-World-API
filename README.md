@@ -1,0 +1,1 @@
+Fan made api for new world game
