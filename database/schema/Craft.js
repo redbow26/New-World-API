@@ -37,7 +37,7 @@ const CraftSchema = new mongoose.Schema({
     // Nested document
     // Station where this craft is done
     station: {
-        // query: station.name
+        // query: 'station.name'
         // Name of the station
         name: {
             type: String,

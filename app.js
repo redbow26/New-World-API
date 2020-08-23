@@ -5,10 +5,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const { graphqlHTTP } = require('express-graphql');
-const { buildSchema } = require('graphql');
 
-// Database schema
-const Craft = require('./database/schema/Craft');
+// Custom requirement
+const graphqlSchema = require('./graphql/schema/index');
+const graphqlResolver = require('./graphql/resolvers/index');
 
 // Create the express app
 const app = express();
@@ -22,118 +22,8 @@ app.use(bodyParser.json());
 // Graphql api route -> /api
 // Use the graphqlHTTP middleware function 
 app.use('/api', graphqlHTTP({
-    schema: buildSchema(`
-        type station {
-            name: String!
-            level: Int!
-        }
-        
-        type ingredient {
-            name: String!
-            quantity: Int!
-        }
-    
-        type craft {
-            _id: ID!
-            name: String!
-            tier: Int!
-            ingredients: [ingredient!]!
-            level: Int!
-            station: station!
-        }
-
-        input stationInput {
-            name: String!
-            level: Int!
-        }
-        
-        input ingredientInput {
-            name: String!
-            quantity: Int!
-        }
-
-        input craftInput {
-            name: String!
-            tier: Int!
-            ingredients: [ingredientInput!]!
-            level: Int!
-            station: stationInput!
-        }
-
-        type RootQuery {
-            crafts(stationName: String, tier: Int): [craft!]!
-            craft(name: String!): craft
-        }
-
-        type RootMutation {
-            createCrafts(input: craftInput): craft
-        }
-
-        schema {
-            query: RootQuery
-            mutation: RootMutation
-        }
-    `),
-    rootValue: {
-        crafts: args => {
-            // Create the query with the information
-            const query = {}
-            if (args.stationName) {
-                query['station.name'] = args.stationName;
-            } 
-            if (args.tier) {
-                query.tier = args.tier;
-            }
-            // Find the element in the database with the specify query
-            // With return, graphql know this resolver execute async function
-            return Craft.find(query)
-            .then(crafts => {
-                return crafts.map(craft => {
-                    return { ...craft._doc};
-                });
-            })
-            .catch(err => {
-                console.log(err);
-                // Graphql handle the error
-                throw err;
-            });
-        },
-        craft: args => {
-            // Find the element in the database with the specify query
-            // With return, graphql know this resolver execute async function
-            return Craft.findOne({ name: args.name })
-            .then(craft => {
-                return  { ...craft._doc };
-            })
-            .catch(err => {
-                console.log(err);
-                // Graphql handle the error
-                throw err;
-            });
-        },
-        createCrafts: args => {
-            // Create new data with the craft schema
-            const craft = new Craft({
-                name: args.input.name,
-                tier: args.input.tier,
-                ingredients: args.input.ingredients,
-                level: args.input.level,
-                station: args.input.station
-            });
-            // Save data in the database
-            // With return, graphql know this resolver execute async function
-            return craft.save()
-            .then(result => {
-                // Return the craft data after adding to the database
-                return {...result._doc};
-            })
-            .catch(err => {
-                console.log(err);
-                // Graphql handle the error
-                throw err;
-            });
-        }
-    },
+    schema: graphqlSchema,
+    rootValue: graphqlResolver,
     // Dev only
     graphiql: true,
 }));
